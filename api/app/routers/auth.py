@@ -88,6 +88,9 @@ async def auth_google(
         max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
     )
 
+    # Attach token for cross-origin frontend support (e.g. Vercel <-> AWS)
+    user.access_token = token
+
     return user
 
 

@@ -20,11 +20,19 @@ class Settings(BaseSettings):
     # Server
     PORT: int = 8000
     DEBUG: bool = False
-    CORS_ORIGINS: List[str] = [
+    CORS_ORIGINS: List[str] | str = [
         "http://localhost:5173",
         "http://127.0.0.1:5173",
         "http://localhost:3000",
     ]
+
+    @property
+    def cors_origins_list(self) -> List[str]:
+        if isinstance(self.CORS_ORIGINS, str):
+            if self.CORS_ORIGINS.strip() == "*":
+                return ["*"]
+            return [x.strip() for x in self.CORS_ORIGINS.split(",") if x.strip()]
+        return self.CORS_ORIGINS
 
     # Database
     DATABASE_URL: str | None = None

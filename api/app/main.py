@@ -27,10 +27,12 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS configuration
+# CORS configuration (supports localhost, custom domains, and Vercel deployments)
+allow_all = "*" in settings.cors_origins_list
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS,
+    allow_origin_regex=r"^https?://.*" if allow_all else None,
+    allow_origins=[] if allow_all else settings.cors_origins_list,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

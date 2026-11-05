@@ -14,6 +14,7 @@ class UserRead(BaseModel):
     name: Optional[str] = None
     avatar_url: Optional[str] = None
     created_at: datetime
+    access_token: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 
