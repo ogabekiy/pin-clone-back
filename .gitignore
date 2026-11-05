@@ -37,14 +37,14 @@ venv.bak/
 *.env
 
 # Embedder & HuggingFace cache/weights
-backend/embedder/models/
-models/
+embedder/models/
 *.bin
 *.pt
 *.pth
 *.safetensors
 .cache/
 huggingface/
+hf_cache/
 
 # Database & SQLite
 *.sqlite
