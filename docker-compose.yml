@@ -1,0 +1,61 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: pinterest_postgres
+    environment:
+      POSTGRES_DB: ${DB_NAME:-pinterest_db}
+      POSTGRES_USER: ${DB_USER:-ogabek}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-123456}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-ogabek} -d ${DB_NAME:-pinterest_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  embedder:
+    build:
+      context: ./embedder
+      dockerfile: Dockerfile
+    container_name: pinterest_embedder
+    ports:
+      - "8001:8001"
+    volumes:
+      - hf_cache:/root/.cache/huggingface
+    restart: unless-stopped
+    environment:
+      - PORT=8001
+
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    container_name: pinterest_api
+    depends_on:
+      postgres:
+        condition: service_healthy
+      embedder:
+        condition: service_started
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://${DB_USER:-ogabek}:${DB_PASSWORD:-123456}@postgres:5432/${DB_NAME:-pinterest_db}
+      - EMBEDDER_URL=http://embedder:8001
+      - R2_ACCOUNT_ID=${R2_ACCOUNT_ID}
+      - R2_ACCESS_KEY_ID=${R2_ACCESS_KEY_ID}
+      - R2_SECRET_ACCESS_KEY=${R2_SECRET_ACCESS_KEY}
+      - R2_BUCKET_NAME=${R2_BUCKET_NAME:-pin-images}
+      - R2_PUBLIC_URL=${R2_PUBLIC_URL}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-secret-key-change-in-production}
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:5173,http://127.0.0.1:5173}
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  hf_cache:
+
