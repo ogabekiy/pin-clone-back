@@ -226,6 +226,13 @@ async def get_pin(
         board_res = await db.execute(board_stmt)
         board_ids = list(board_res.scalars().all())
 
+    # Increment views_count directly when pin is viewed
+    await db.execute(
+        update(Pin).where(Pin.id == pin_id).values(views_count=Pin.views_count + 1)
+    )
+    await db.commit()
+    current_views = (pin.views_count or 0) + 1
+
     return PinDetailRead(
         id=pin.id,
         user_id=pin.user_id,
@@ -240,7 +247,7 @@ async def get_pin(
         created_at=pin.created_at,
         user=pin.user,
         likes_count=likes_count,
-        views_count=pin.views_count,
+        views_count=current_views,
         is_liked=is_liked,
         comments_count=comments_count,
         board_ids=board_ids,
@@ -357,9 +364,9 @@ async def record_pin_view(
         for k in expired:
             _recent_views_cache.pop(k, None)
 
-    # If viewed in the last 30 seconds, return current count without duplicate increment
+    # If viewed in the last 5 seconds, return current count without duplicate increment
     last_viewed = _recent_views_cache.get(cache_key)
-    if last_viewed and (now - last_viewed) < 30.0:
+    if last_viewed and (now - last_viewed) < 5.0:
         v_res = await db.execute(select(Pin.views_count).where(Pin.id == pin_id))
         return {"status": "ok", "views_count": v_res.scalar() or 0}
 

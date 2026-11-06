@@ -28,6 +28,7 @@ class Settings(BaseSettings):
         "http://localhost:3000",
         "https://admin.pin.plutosoft.uz",
         "https://pin.plutosoft.uz",
+        "https://pin-clone-front.vercel.app",
     ]
 
     @property

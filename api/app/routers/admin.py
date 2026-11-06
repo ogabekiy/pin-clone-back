@@ -16,6 +16,7 @@ from app.schemas.admin import (
     AdminCreateUserRequest,
     AdminLoginRequest,
     AdminPinItem,
+    AdminPinsResponse,
     AdminSetupRequest,
     AdminSetupStatusResponse,
     AdminStatsResponse,
@@ -512,16 +513,16 @@ async def delete_user(
     return {"message": "Foydalanuvchi va uning barcha ma'lumotlari muvaffaqiyatli o'chirildi"}
 
 
-@router.get("/pins", response_model=List[AdminPinItem])
+@router.get("/pins", response_model=AdminPinsResponse)
 async def list_all_pins(
     q: Optional[str] = Query(None, description="Search pins by title or description"),
     user_id: Optional[int] = Query(None, description="Filter by user ID"),
-    limit: int = Query(50, ge=1, le=200),
+    limit: int = Query(50, ge=1, le=1000),
     offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
     admin: User = Depends(get_current_admin),
 ):
-    """List all pins across all users with author details."""
+    """List all pins across all users with author details and total count."""
     likes_count_sub = (
         select(func.count(Like.user_id))
         .where(Like.pin_id == Pin.id)
@@ -535,6 +536,26 @@ async def list_all_pins(
         .scalar_subquery()
     )
 
+    base_filter = []
+    if q:
+        search_pattern = f"%{q.strip().lower()}%"
+        base_filter.append(
+            or_(
+                func.lower(Pin.title).ilike(search_pattern),
+                func.lower(Pin.description).ilike(search_pattern),
+            )
+        )
+
+    if user_id:
+        base_filter.append(Pin.user_id == user_id)
+
+    # Count total matching pins
+    count_query = select(func.count(Pin.id))
+    if base_filter:
+        count_query = count_query.where(*base_filter)
+    total_res = await db.execute(count_query)
+    total_count = total_res.scalar() or 0
+
     query = (
         select(
             Pin,
@@ -547,17 +568,8 @@ async def list_all_pins(
         .join(User, Pin.user_id == User.id)
     )
 
-    if q:
-        search_pattern = f"%{q.strip().lower()}%"
-        query = query.where(
-            or_(
-                func.lower(Pin.title).ilike(search_pattern),
-                func.lower(Pin.description).ilike(search_pattern),
-            )
-        )
-
-    if user_id:
-        query = query.where(Pin.user_id == user_id)
+    if base_filter:
+        query = query.where(*base_filter)
 
     query = query.order_by(desc(Pin.created_at)).offset(offset).limit(limit)
     result = await db.execute(query)
@@ -590,7 +602,7 @@ async def list_all_pins(
                 user_avatar=u_avatar,
             )
         )
-    return items
+    return AdminPinsResponse(items=items, total=total_count)
 
 
 @router.delete("/pins/{pin_id}")
@@ -620,7 +632,7 @@ async def delete_pin(
 
 @router.get("/comments", response_model=List[AdminCommentItem])
 async def list_recent_comments(
-    limit: int = Query(50, ge=1, le=200),
+    limit: int = Query(50, ge=1, le=500),
     offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
     admin: User = Depends(get_current_admin),
@@ -632,8 +644,11 @@ async def list_recent_comments(
             User.name.label("user_name"),
             User.email.label("user_email"),
             User.avatar_url.label("user_avatar"),
+            Pin.title.label("pin_title"),
+            Pin.image_url.label("pin_image"),
         )
         .join(User, Comment.user_id == User.id)
+        .outerjoin(Pin, Comment.pin_id == Pin.id)
         .order_by(desc(Comment.created_at))
         .offset(offset)
         .limit(limit)
@@ -646,6 +661,8 @@ async def list_recent_comments(
         u_name = row[1]
         u_email = row[2]
         u_avatar = row[3]
+        p_title = row[4]
+        p_image = row[5]
         items.append(
             AdminCommentItem(
                 id=c.id,
@@ -654,7 +671,9 @@ async def list_recent_comments(
                 user_name=u_name,
                 user_email=u_email,
                 user_avatar=u_avatar,
-                text=c.text,
+                pin_title=p_title,
+                pin_image=p_image,
+                text=c.body,
                 created_at=c.created_at,
             )
         )

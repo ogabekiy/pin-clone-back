@@ -77,6 +77,13 @@ class AdminPinItem(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class AdminPinsResponse(BaseModel):
+    items: List[AdminPinItem]
+    total: int
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class AdminCommentItem(BaseModel):
     id: int
     pin_id: int
@@ -84,6 +91,8 @@ class AdminCommentItem(BaseModel):
     user_name: Optional[str] = None
     user_email: Optional[str] = None
     user_avatar: Optional[str] = None
+    pin_title: Optional[str] = None
+    pin_image: Optional[str] = None
     text: str
     created_at: datetime
 
