@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import TYPE_CHECKING, List
-from sqlalchemy import BigInteger, DateTime, String, Text, func
+from sqlalchemy import BigInteger, Boolean, DateTime, String, Text, func, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import Base
 
@@ -16,11 +16,14 @@ class User(Base):
     __tablename__ = "users"
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
-    google_id: Mapped[str] = mapped_column(Text, unique=True, nullable=False, index=True)
+    google_id: Mapped[str | None] = mapped_column(Text, unique=True, nullable=True, index=True)
     email: Mapped[str] = mapped_column(Text, unique=True, nullable=False, index=True)
     username: Mapped[str | None] = mapped_column(Text, unique=True, nullable=True, index=True)
     name: Mapped[str | None] = mapped_column(Text, nullable=True)
     avatar_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    role: Mapped[str] = mapped_column(String(20), default="user", server_default="user", nullable=False, index=True)
+    is_blocked: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"), nullable=False, index=True)
+    password_hash: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
@@ -37,4 +40,3 @@ class User(Base):
     followers: Mapped[List["Follow"]] = relationship(
         "Follow", foreign_keys="Follow.following_id", back_populates="following", cascade="all, delete-orphan"
     )
-

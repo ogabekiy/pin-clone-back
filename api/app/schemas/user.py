@@ -13,6 +13,8 @@ class UserRead(BaseModel):
     username: Optional[str] = None
     name: Optional[str] = None
     avatar_url: Optional[str] = None
+    role: str = "user"
+    is_blocked: bool = False
     created_at: datetime
     access_token: Optional[str] = None
 
