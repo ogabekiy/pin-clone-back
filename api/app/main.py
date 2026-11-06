@@ -1,5 +1,5 @@
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import APIRouter, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 
@@ -45,15 +45,25 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include routers
-app.include_router(auth.router)
-app.include_router(admin.router)
-app.include_router(pins.router)
-app.include_router(boards.router)
-app.include_router(search.router)
-app.include_router(users.router)
-app.include_router(chat.router)
-app.include_router(social.router)
+# Include routers (both root and /api prefix for maximum client compatibility)
+routers = [
+    auth.router,
+    admin.router,
+    pins.router,
+    boards.router,
+    search.router,
+    users.router,
+    chat.router,
+    social.router,
+]
+
+for r in routers:
+    app.include_router(r)
+
+api_router = APIRouter(prefix="/api")
+for r in routers:
+    api_router.include_router(r)
+app.include_router(api_router)
 
 
 @app.get("/health")
